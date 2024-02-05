@@ -1,0 +1,28 @@
+diff --git a/socfpga_agilex_atf_defconfig.orig b/socfpga_agilex_atf_defconfig
+index de4552e..33d86bf 100644
+--- a/configs/socfpga_agilex_atf_defconfig
++++ b/configs/socfpga_agilex_atf_defconfig
+@@ -10,9 +10,9 @@ CONFIG_SYS_SPI_U_BOOT_OFFS=0x02000000
+ CONFIG_DM_GPIO=y
+ CONFIG_SPL_TEXT_BASE=0xFFE00000
+ CONFIG_TARGET_SOCFPGA_AGILEX_SOCDK=y
+-CONFIG_IDENT_STRING="socfpga_agilex"
++CONFIG_IDENT_STRING="socfpga_kerberos"
+ CONFIG_SPL_FS_FAT=y
+-CONFIG_DEFAULT_DEVICE_TREE="socfpga_agilex_socdk"
++CONFIG_DEFAULT_DEVICE_TREE="socfpga_kerberos_socdk"
+ CONFIG_FIT=y
+ CONFIG_FIT_SIGNATURE=y
+ CONFIG_FIT_SIGNATURE_MAX_SIZE=0x10000000
+@@ -21,9 +21,9 @@ CONFIG_SPL_CRC32_SUPPORT=y
+ CONFIG_SPL_LOAD_FIT=y
+ CONFIG_SPL_LOAD_FIT_ADDRESS=0x02000000
+ # CONFIG_USE_SPL_FIT_GENERATOR is not set
+-CONFIG_BOOTDELAY=5
++CONFIG_BOOTDELAY=2
+ CONFIG_USE_BOOTARGS=y
+-CONFIG_BOOTARGS="earlycon panic=-1"
++CONFIG_BOOTARGS="earlycon panic=-1 console=ttyS0,115200 earlyprintk uio_pdrv_genirq.of_id=generic-uio"
+ CONFIG_USE_BOOTCOMMAND=y
+ CONFIG_BOOTCOMMAND="run fatscript;run mmcfitload;run mmcfitboot"
+ CONFIG_SPL_CACHE=y

@@ -1,0 +1,24 @@
+diff --git a/configs/socfpga_agilex_defconfig b/configs/socfpga_agilex_defconfig
+index 6bc35254ac..9bb0ed344e 100644
+--- a/configs/socfpga_agilex_defconfig
++++ b/configs/socfpga_agilex_defconfig
+@@ -13,15 +13,15 @@ CONFIG_SYS_SPI_U_BOOT_OFFS=0x02000000
+ CONFIG_DM_GPIO=y
+ CONFIG_SPL_TEXT_BASE=0xFFE00000
+ CONFIG_TARGET_SOCFPGA_AGILEX_SOCDK=y
+-CONFIG_IDENT_STRING="socfpga_agilex"
++CONFIG_IDENT_STRING="socfpga_kerberos"
+ CONFIG_SPL_FS_FAT=y
+ CONFIG_ARMV8_SEC_FIRMWARE_SUPPORT=y
+ # CONFIG_PSCI_RESET is not set
+ CONFIG_ARMV8_PSCI=y
+-CONFIG_DEFAULT_DEVICE_TREE="socfpga_agilex_socdk"
+-CONFIG_BOOTDELAY=5
++CONFIG_DEFAULT_DEVICE_TREE="socfpga_kerberos_socdk"
++CONFIG_BOOTDELAY=2
+ CONFIG_USE_BOOTARGS=y
+-CONFIG_BOOTARGS="earlycon panic=-1"
++CONFIG_BOOTARGS="earlycon panic=-1 console=ttyS0,115200 earlyprintk uio_pdrv_genirq.of_id=generic-uio"
+ CONFIG_USE_BOOTCOMMAND=y
+ CONFIG_BOOTCOMMAND="run fatscript;run mmcload;run linux_qspi_enable;run rsu_status;run mmcboot"
+ CONFIG_SPL_CACHE=y

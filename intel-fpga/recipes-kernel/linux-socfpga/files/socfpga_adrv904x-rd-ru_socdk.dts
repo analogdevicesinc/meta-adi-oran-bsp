@@ -1,0 +1,303 @@
+// SPDX-License-Identifier:     GPL-2.0
+/*
+ * Copyright (C) 2019, Intel Corporation
+ */
+#include "socfpga_adrv904x-rd-ru.dtsi"
+
+/ {
+	model = "SoCFPGA ADRV904X-RD-RU SoCDK";
+
+	aliases {
+		serial0 = &uart1;/*HPS UART1 is used as ADRV904X-RD-RU main UART @ttyS0*/
+		serial1 = &uart0;/*HPS UART0 is used for debugging connection to Koror UART @ttyS1*/
+		ethernet0 = &gmac0;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		hps0 {
+			label = "hps_led0";
+			gpios = <&porta 0 GPIO_ACTIVE_HIGH>;
+		};
+
+		hps1 {
+			label = "hps_led1";
+			gpios = <&porta 6 GPIO_ACTIVE_HIGH>;
+		};
+
+		hps2 {
+			label = "hps_led2";
+			gpios = <&porta 5 GPIO_ACTIVE_HIGH>;
+		};
+		
+		hps3 {
+			label = "hps_led3";
+			gpios = <&porta 1 GPIO_ACTIVE_HIGH>;
+		};
+
+		hps4 {
+			label = "hps_led4";
+			gpios = <&porta 7 GPIO_ACTIVE_HIGH>;
+		};
+
+		hps5 {
+			label = "hps_led5";
+			gpios = <&porta 8 GPIO_ACTIVE_HIGH>;
+		};
+		
+		hps6 {
+			label = "hps_led6";
+			gpios = <&porta 4 GPIO_ACTIVE_HIGH>;
+		};
+
+		hps7 {
+			label = "hps_led7";
+			gpios = <&porta 9 GPIO_ACTIVE_HIGH>;
+		};
+
+	};
+
+	memory {
+		device_type = "memory";
+		/* We expect the bootloader to fill in the reg */
+		reg = <0 0 0 0>;
+	};
+
+	soc {
+		clocks {
+			osc1 {
+				clock-frequency = <25000000>;
+			};
+
+			sysclk{
+				clock-frequency = <245760000>;
+			};
+
+			ref_a {
+				clock-frequency = <125000000>;
+			};
+
+			ref_aa {
+				clock-frequency = <390625000>;
+			};
+
+			ref_b {
+				clock-frequency = <1>;
+			};
+
+			ref_bb {
+				clock-frequency = <10000000>;
+			};
+		};
+	};
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&gmac0 {
+	status = "okay";
+	phy-mode = "rgmii";
+	phy-handle = <&phy0>;
+
+	max-frame-size = <9000>;
+
+	mdio0 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "snps,dwmac-mdio";
+		phy0: ethernet-phy@0 {
+			reg = <15>;
+
+			/*txd0-skew-ps = <420>;*/ /* 0ps */
+			/*txd1-skew-ps = <420>;*/ /* 0ps */
+			/*txd2-skew-ps = <420>;*/ /* 0ps */
+			/*txd3-skew-ps = <420>;*/ /* 0ps */
+			/*rxd0-skew-ps = <420>;*/ /* 0ps */
+			/*rxd1-skew-ps = <420>;*/ /* 0ps */
+			/*rxd2-skew-ps = <420>;*/ /* 0ps */
+			/*rxd3-skew-ps = <420>;*/ /* 0ps */
+			/*txen-skew-ps = <420>;*/ /* 0ps */
+			/*txc-skew-ps  = <900>;*/ /* 0ps */
+			/*rxdv-skew-ps = <420>;*/ /* 0ps */
+			/*rxc-skew-ps  = <900>;*/ /* 0ps */
+
+		};
+	};
+};
+
+&mmc {
+	status = "okay";
+	cap-sd-highspeed;
+	broken-cd;
+	bus-width = <4>;
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&uart1 {
+	status = "okay";
+};
+
+&usb0 {
+	status = "okay";
+	disable-over-current;
+};
+
+&watchdog0 {
+	status = "okay";
+};
+
+&i2c0 {
+	status = "okay";
+	clock-frequency = <100000>;
+	i2c-sda-falling-time-ns = <890>;  /* hcnt */
+	i2c-sdl-falling-time-ns = <890>;  /* lcnt */
+
+	
+
+	i2c_mux:i2cswitch@70 {
+		compatible = "nxp,pca9548";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x70>;
+		
+		/*
+		interrupt-parent = <&ipic>;
+		interrupts = <17 IRQ_TYPE_LEVEL_LOW>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		*/
+
+		i2c@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+
+			ad9545_clock: ad9545@4b {
+				compatible = "adi,ad9545";
+				reg = <0x4b>;
+
+				#address-cells = <1>;
+				#size-cells = <0>;
+				#clock-cells = <2>;
+
+				clocks = <&ref_a>, <&ref_aa>, <&ref_b>, <&ref_bb>;
+				clock-names = "Ref-A", "Ref-AA", "Ref-B", "Ref-BB";
+
+				adi,auto-init;
+			};
+		};
+
+		i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+
+			rtc@68 {
+				compatible = "dallas,ds1339";
+				reg = <0x68>;
+			};
+		};
+
+		i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+
+			eeprom@50 {/*optical interface #0*/
+				compatible = "at,24c02";
+				reg = <0x50>;
+			};
+			
+			eeprom@51 {/*optical interface #1*/
+				compatible = "at,24c02";
+				reg = <0x51>;
+			};
+		};
+
+		i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <3>;
+
+			temp@4d {/*max6581*/
+				compatible = "maxim,max1619";
+				reg = <0x4d>;
+			};
+
+		};
+		
+		i2c@5 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <5>;
+
+			brm457@2d {/* power module */
+				compatible = "PMBus";
+				reg = <0x2d>;
+			};
+
+		};
+
+	 };
+};
+
+&ptpclk {
+	clocks = <&ad9545_clock AD9545_CLK_OUT AD9545_Q0B>,
+		 <&ad9545_clock AD9545_CLK_NCO AD9545_NCO0>;
+	clock-names = "sys_clk", "tuning_clk";
+	status = "okay";
+};
+
+&msp {
+	status = "okay";
+	adi,ptp-clk = <&ptpclk>;
+};
+
+&qspi {
+	status = "okay";
+	flash@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "micron,mt25qu02g", "jedec,spi-nor";
+		reg = <0>;
+		spi-max-frequency = <100000000>;
+
+		m25p,fast-read;
+		cdns,page-size = <256>;
+		cdns,block-size = <16>;
+		cdns,read-delay = <2>;
+		cdns,tshsl-ns = <50>;
+		cdns,tsd2d-ns = <50>;
+		cdns,tchsh-ns = <4>;
+		cdns,tslch-ns = <4>;
+
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			qspi_boot: partition@0 {
+				label = "Boot and fpga data";
+				reg = <0x0 0x03FE0000>;
+			};
+
+			qspi_rootfs: partition@3FE0000 {
+				label = "Root Filesystem - JFFS2";
+				reg = <0x03FE0000 0x0C020000>;
+			};
+		};
+	};
+};

@@ -1,0 +1,3 @@
+require adi_socfpga_default_providers.inc
+require adi_socfpga_default_versions.inc
+require conf/machine/include/socfpga_armv8a.inc

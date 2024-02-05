@@ -1,0 +1,27 @@
+<pfg version="1">
+    <settings custom_db_dir="~/intelFPGA_pro/21.3/" mode="ASX4"/>
+    <output_files>
+        <output_file name="AGFB014R24B_hps" directory="./" type="JIC">
+            <file_options/>
+            <flash_device_id>Flash_Device_1</flash_device_id>
+        </output_file>
+    </output_files>
+    <bitstreams>
+        <bitstream id="Bitstream_1">
+            <path>./AGFB014R24B.hps.rbf</path>
+        </bitstream>
+    </bitstreams>
+    <flash_devices>
+        <flash_device type="MT25QU128" id="Flash_Device_1">
+            <partition reserved="1" fixed_s_addr="1" s_addr="0x00000000" e_addr="0x000FFFFF" fixed_e_addr="1" id="BOOT_INFO" size="0"/>
+            <partition reserved="0" fixed_s_addr="0" s_addr="auto" e_addr="auto" fixed_e_addr="0" id="P1" size="0"/>
+        </flash_device>
+        <flash_loader>AGFB014R24B</flash_loader>
+    </flash_devices>
+    <assignments>
+        <assignment page="0" partition_id="P1">
+            <bitstream_id>Bitstream_1</bitstream_id>
+        </assignment>
+    </assignments>
+</pfg>
+

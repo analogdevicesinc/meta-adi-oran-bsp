@@ -1,0 +1,15 @@
+diff --git a/socfpga_soc64_fit-u-boot.dtsi.orig b/socfpga_soc64_fit-u-boot.dtsi
+index d72855ea47..74af1d6f01 100644
+--- a/arch/arm/dts/socfpga_soc64_fit-u-boot.dtsi
++++ b/arch/arm/dts/socfpga_soc64_fit-u-boot.dtsi
+@@ -119,8 +119,8 @@
+ 					arch = "arm64";
+ 					os = "linux";
+ 					compression = "none";
+-					load = <0x4080000>;
+-					entry = <0x4080000>;
++					load  = <0x4200000>;
++					entry = <0x4200000>;
+ 					kernel_blob: blob-ext {
+ 						filename = "Image";
+ 					};

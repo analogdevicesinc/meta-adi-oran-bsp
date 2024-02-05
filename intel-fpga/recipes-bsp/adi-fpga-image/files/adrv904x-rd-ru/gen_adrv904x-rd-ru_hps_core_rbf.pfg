@@ -1,0 +1,15 @@
+<pfg version="1">
+    <settings custom_db_dir="~/intelFPGA_pro/21.3/" mode="AVSTX8"/>
+    <output_files>
+        <output_file name="AGFB014R24B" hps="1" directory="./" type="PERIPH_RBF">
+            <file_options/>
+            <bitstream_id>Bitstream_1</bitstream_id>
+        </output_file>
+    </output_files>
+    <bitstreams>
+        <bitstream id="Bitstream_1">
+            <path>./AGFB014R24B_hps.sof</path>
+        </bitstream>
+    </bitstreams>
+</pfg>
+
