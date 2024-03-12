@@ -12,7 +12,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/..:"
 
 SRC_URI = "${FPGA_URI};name=fpga-files;subdir=${BPN}-${PV}-${MACHINE}"
 SRC_URI[fpga-files.md5sum] = "${FPGA_MD5}"
-SRC_URI[fpga-files.sh256sum] = "${FPGA_SH256}"
+SRC_URI[fpga-files.sha256sum] = "${FPGA_SH256}"
 
 SRC_URI:append = " file://files/${MACHINE}/gen_${MACHINE}_hps_core_rbf.pfg"
 SRC_URI:append = " file://files/${MACHINE}/gen_${MACHINE}_jic.pfg"
