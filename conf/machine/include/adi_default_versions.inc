@@ -1,0 +1,8 @@
+PREFERRED_VERSION_linux-adi                 ?= "5.10%"
+PREFERRED_VERSION_u-boot                    ?= "2021.10%"
+PREFERRED_VERSION_trusted-firmware-a-adi    ?= "git"
+PREFERRED_VERSION_optee-os-adi              ?= "git"
+PREFERRED_VERSION_optee-os-tadevkit-adi     ?= "git"
+PREFERRED_VERSION_optee-apps-adi            ?= "git"
+PREFERRED_VERSION_optee-apps-userspace-adi  ?= "git"
+PREFERRED_VERSION_boot-wrapper-aarch64      ?= "git"

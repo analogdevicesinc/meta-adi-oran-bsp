@@ -1,0 +1,2 @@
+require adi_default_providers.inc
+require adi_default_versions.inc
