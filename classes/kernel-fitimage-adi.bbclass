@@ -37,6 +37,7 @@ fitimage_emit_section_config() {
     ramdisk_line=""
     bootscr_line=""
     setup_line=""
+    anti_rollback_version_line=""
     default_line=""
     default_dtb_image="${FIT_CONF_DEFAULT_DTB}"
 
@@ -93,6 +94,8 @@ fitimage_emit_section_config() {
         fi
     fi
 
+    anti_rollback_version_line="anti-rollback-version = <"${ANTI_ROLLBACK_VERSION}">;"
+
     cat << EOF >> $its_file
         $default_line
         $conf_node {
@@ -103,6 +106,7 @@ fitimage_emit_section_config() {
             $ramdisk_line
             $bootscr_line
             $setup_line
+            $anti_rollback_version_line
             hash-1 {
                 algo = "$conf_csum";
             };

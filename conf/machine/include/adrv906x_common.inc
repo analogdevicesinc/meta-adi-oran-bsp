@@ -10,6 +10,8 @@ require conf/machine/include/arm/armv8-2a/tune-cortexa55.inc
 
 SOC ?= "samana"
 
+ANTI_ROLLBACK_VERSION = "0"
+
 SERIAL_CONSOLES ?= "115200;ttyAMA0"
 # Must be empty to support read-only rootfs
 SERIAL_CONSOLES_CHECK = ""

@@ -112,7 +112,8 @@
 
 		uio_lw_h2f: uio_lw_h2f@0xF9000000 {
 				compatible = "generic-uio";
-				reg = <0xF9000000 0x200000>;
+				reg = <0xF9000000 0x200000>,
+				      <0x80200000 0x100000>;
 				/*interrupts = <0 29 4>;*/
 		};
 
