@@ -2,7 +2,7 @@
 /*
  * Clock driver for the ptp hardware clock FTW setup.
  *
- * Copyright (C) 2022 Analog Device, Inc.
+ * Copyright (C) 2022-2024 Analog Device, Inc.
  */
 #include <linux/firmware.h>
 #include <linux/i2c.h>
@@ -294,7 +294,6 @@ int adi_phc_clk_probe(struct phc_hw_clk *hw_clk)
 		return -ENODEV;
 	}
 
-	spin_lock_init(&hw_clk->clk_lock);
 	return 0;
 }
 

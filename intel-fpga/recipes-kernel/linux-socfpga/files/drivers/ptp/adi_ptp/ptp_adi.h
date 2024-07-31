@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0+
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * PTP hardware clock driver for the ADI low-phy soc of timing and synchronization devices.
  *
- * Copyright (C) 2022 Analog Device, Inc.
+ * Copyright (C) 2022-2024 Analog Device, Inc.
  */
 #ifndef __PTP_ADI_H
 #define __PTP_ADI_H
@@ -269,7 +270,7 @@ struct phc_hw_tod {
 	u64 poll_delay_ns;
 	u32 poll_timeout_us;
 	/* Serialize access to hw_registers of the ToD module */
-	spinlock_t reg_lock;
+	struct mutex reg_lock;
 	struct tod_ppsx ppsx;
 };
 

@@ -2,7 +2,7 @@
 /*
  * PTP hardware clock driver for the ADI low-phy soc of timing and synchronization devices.
  *
- * Copyright (C) 2022 Analog Device, Inc.
+ * Copyright (C) 2022-2024 Analog Device, Inc.
  */
 
 #include <linux/printk.h>
@@ -507,14 +507,13 @@ static int adi_tod_enable(struct phc_hw_tod *tod, struct ptp_clock_request *requ
 static int adi_tod_settime(struct phc_hw_tod *tod, const struct timespec64 *ts)
 {
 	int err;
-	unsigned long flags;
 	struct tod_tstamp tstamp;
 
 	timespec_to_tstamp(&tstamp, ts);
 
-	spin_lock_irqsave(&tod->reg_lock, flags);
+	mutex_lock(&tod->reg_lock);
 	err = _tod_hw_settstamp(tod, &tstamp);
-	spin_unlock_irqrestore(&tod->reg_lock, flags);
+	mutex_unlock(&tod->reg_lock);
 
 	return err;
 }
@@ -522,11 +521,10 @@ static int adi_tod_settime(struct phc_hw_tod *tod, const struct timespec64 *ts)
 static int adi_tod_adjtime(struct phc_hw_tod *tod, s64 delta)
 {
 	int err;
-	unsigned long flags;
 
-	spin_lock_irqsave(&(tod->reg_lock), flags);
+	mutex_lock(&tod->reg_lock);
 	err = _tod_adjtime(tod, delta);
-	spin_unlock_irqrestore(&(tod->reg_lock), flags);
+	mutex_unlock(&tod->reg_lock);
 
 	return err;
 }
@@ -536,15 +534,14 @@ static int adi_tod_gettimex(struct phc_hw_tod *tod,
 			    struct ptp_system_timestamp *sts)
 {
 	int err;
-	unsigned long flags;
 	struct tod_tstamp tstamp;
 
-	spin_lock_irqsave(&(tod->reg_lock), flags);
+	mutex_lock(&tod->reg_lock);
 	ptp_read_system_prets(sts);
 	err = _tod_hw_gettstamp(tod, &tstamp);
 	ptp_read_system_postts(sts);
 	tstamp_to_timespec(ts, &tstamp);
-	spin_unlock_irqrestore(&(tod->reg_lock), flags);
+	mutex_unlock(&tod->reg_lock);
 
 	return err;
 }
@@ -555,7 +552,7 @@ static int adi_tod_probe(struct phc_hw_tod *tod)
 	struct adi_phc *phc = container_of(tod, struct adi_phc, hw_tod);
 	int ret;
 
-	spin_lock_init(&tod->reg_lock);
+	mutex_init(&tod->reg_lock);
 
 	/* get the gc and local clock frequency from the system clock */
 	rate = clk_get_rate(phc->sys_clk);
@@ -760,5 +757,4 @@ static struct platform_driver ptp_adi_driver = {
 	.probe			= adi_ptp_probe,
 	.remove			= adi_ptp_remove,
 };
-MODULE_SOFTDEP("pre: ad9545");
 module_platform_driver(ptp_adi_driver);

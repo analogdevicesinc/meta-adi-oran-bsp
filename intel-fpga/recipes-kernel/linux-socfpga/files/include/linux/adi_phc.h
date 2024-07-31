@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
+/* Copyright (C) 2023 Analog Device, Inc. */
 #ifndef __ADI_PHC_H__
 #define __ADI_PHC_H__
 

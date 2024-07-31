@@ -1,23 +1,9 @@
-COMPATIBLE_MACHINE = "titan-*"
+LICENSE = "BSD-3-Clause"
+COMPATIBLE_MACHINE = "titan-*|denali-*"
 
-PROVIDES:append = " trusted-firmware-a-dtbs"
+inherit oran-trusted-firmware-a-dtbs-adi
+require recipes-bsp/trusted-firmware-a-adi/include/trusted-firmware-a-adi.inc
+require recipes-bsp/trusted-firmware-a-adi/include/trusted-firmware-a-adi_git.inc
 
-require recipes-bsp/trusted-firmware-a/trusted-firmware-a.inc
-require trusted-firmware-a-adi_git.inc
-require trusted-firmware-a-adi.inc
-
-MACHINE_TFA_REQUIRE ?= ""
-
-COMPATIBLE_MACHINE = "titan-*"
-
-TFA_BUILD_TARGET = "dtbs"
-TFA_INSTALL_TARGET = "${TFA_HW_CONFIG} ${TFA_FW_CONFIG}"
-
-do_compile() {
-    # override ARM's do_compile because they try to patch files during this step
-
-    # Currently there are races if you build all the targets at once in parallel
-    for T in ${TFA_BUILD_TARGET}; do
-        oe_runmake -C ${S} $T
-    done
-}
+LIC_FILES_CHKSUM = "file://docs/license.rst;md5=b2c740efedc159745b9b31f88ff03dde"
+LIC_FILES_CHKSUM:append = " file://${TFA_MBEDTLS_DIR}/LICENSE;md5=3b83ef96387f14655fc854ddc3c6bd57"

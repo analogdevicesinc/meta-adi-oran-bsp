@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Driver for Analog Devices MS Plane Ethernet
  *
- * Copyright (C) 2022-2023 Analog Device Inc.
+ * Copyright (C) 2022-2024 Analog Device, Inc.
  */
 
 #include <linux/types.h>
 #include <linux/of_device.h>
+#include <linux/of_net.h>
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 #include <linux/skbuff.h>
@@ -14,13 +15,21 @@
 #include <linux/ip.h>
 #include <linux/tcp.h>
 #include <linux/adi_phc.h>
+#include "altera/intel_fpga_etile.h"
 
 #define DRV_NAME	"adi-msp"
 #define DRV_VERSION	"0.1"
 
 #if IS_ENABLED(CONFIG_ADI_MSP_DEBUG)
 
-#define MSP_DBG(...) trace_printk(__VA_ARGS__)
+#define MSP_DBG(...) do {			\
+	trace_printk(__VA_ARGS__);		\
+	pr_debug(__VA_ARGS__);			\
+} while (0)
+#define MSP_WARN(...) do {			\
+	trace_printk(__VA_ARGS__);		\
+	pr_warn(__VA_ARGS__);
+} while (0)
 #define MSP_ERR(...) do {			\
 	trace_printk(__VA_ARGS__);		\
 	pr_err(__VA_ARGS__);			\
@@ -30,6 +39,7 @@
 #else
 
 #define MSP_DBG(...) do { } while (0)
+#define MSP_WARN(...) do { } while (0)
 #define MSP_ERR(...) pr_err(__VA_ARGS__)
 
 #endif
@@ -115,12 +125,6 @@ union status_wu {
 #define TX_STATUS_WU_ERR	(1 << 2)
 #define TX_STATUS_WU_PTP	(1 << 3)
 
-#define MSP_RST_CTRL		0x20103210
-#define MSP_RST_CTRL_RX0	(1 << 0)
-#define MSP_RST_CTRL_RX1	(1 << 1)
-#define MSP_RST_CTRL_TX0	(1 << 2)
-#define MSP_RST_CTRL_TX1	(1 << 3)
-
 #define MSP_EN			(1 << 0)
 
 #define MSP_RX_INT_FRAME_DROPPED	(1 << 0)
@@ -158,13 +162,22 @@ struct dde_tester_regs {
 	u32 ctrl;
 };
 
-/* Interrupt control register */
-/* The base address is axi_palau_gpio module + 0x01D0 */
-#define MSP_INT_CTRL_RX		0x0
-#define MSP_INT_CTRL_TX		0x4
-#define MSP_INT_CTRL_STATUS	0x8
-#define MSP_INT_CTRL_DMADONE	(1 << 0)
-#define MSP_INT_CTRL_DDE_ERR	(1 << 1)
+struct msp_ctrl_regs {
+	u32 int_ctrl_rx;
+	u32 int_ctrl_tx;
+	u32 int_ctrl_status;
+	u32 rst_ctrl;
+};
+
+/* Interrupt control register bits */
+#define MSP_INT_CTRL_DMADONE	BIT(0)
+#define MSP_INT_CTRL_DDE_ERR	BIT(1)
+
+/* MSP reset control register bits */
+#define MSP_RST_CTRL_RX		BIT(0)
+#define MSP_RST_CTRL_TX		BIT(2)
+#define MSP_RST_CTRL_TS_STORED	BIT(16)
+#define MSP_RST_CTRL_TSBUF_TX	BIT(20)
 
 #define DMA_STAT_PIRQ		(1 << 2)
 #define DMA_STAT_IRQERR		(1 << 1)
@@ -292,7 +305,7 @@ struct dma_regs {
 
 #define MTU			1500
 
-#define TX_TIMEOUT_VALUE	0x100
+#define TX_TIMEOUT_VALUE	0x400
 
 /* If TX MAC does not do padding for us, we need to define this macro.
  * When this macro is define, the frame will be padded to at least 60 bytes.
@@ -314,7 +327,7 @@ struct dma_regs {
 #define RX_WU_LEN		1536
 
 /* The size of array prev_rx_skb[] */
-#define PREV_RX_SKB_NUM		6
+#define PREV_RX_SKB_NUM		7
 /* How many data work units can be used for each frame.
  * Must be smaller than PREV_RX_SKB_NUM
  */
@@ -370,79 +383,6 @@ enum chain_status {
 	ADI_MSP_NL_STAT(tx_reset) \
 	ADI_MSP_NL_STAT(rx_reset)
 
-#define INTEL_ETILE_TX_STATS \
-	INTEL_ETILE_STAT(tx_fragments, 0x800) \
-	INTEL_ETILE_STAT(tx_jabbers, 0x802) \
-	INTEL_ETILE_STAT(tx_fcs_errors, 0x804) \
-	INTEL_ETILE_STAT(tx_crc_errors, 0x806) \
-	INTEL_ETILE_STAT(tx_errored_multicast, 0x808) \
-	INTEL_ETILE_STAT(tx_errored_broadcast, 0x80a) \
-	INTEL_ETILE_STAT(tx_errored_unicast, 0x80c) \
-	INTEL_ETILE_STAT(tx_err_mcast_ctrl_frames, 0x80e) \
-	INTEL_ETILE_STAT(tx_err_bcast_ctrl_frames, 0x810) \
-	INTEL_ETILE_STAT(tx_err_ucast_ctrl_frames, 0x812) \
-	INTEL_ETILE_STAT(tx_pause_errors, 0x814) \
-	INTEL_ETILE_STAT(tx_64byte_frames, 0x816) \
-	INTEL_ETILE_STAT(tx_65to127bytes_frames, 0x818) \
-	INTEL_ETILE_STAT(tx_128to255bytes_frames, 0x81a) \
-	INTEL_ETILE_STAT(tx_256to511bytes_frames, 0x81c) \
-	INTEL_ETILE_STAT(tx_512to1023bytes_frames, 0x81e) \
-	INTEL_ETILE_STAT(tx_1024to1518bytes_frames, 0x820) \
-	INTEL_ETILE_STAT(tx_1519tomax_frames, 0x822) \
-	INTEL_ETILE_STAT(tx_oversize_frames, 0x824) \
-	INTEL_ETILE_STAT(tx_multicast_frames, 0x826) \
-	INTEL_ETILE_STAT(tx_broadcast_frames, 0x828) \
-	INTEL_ETILE_STAT(tx_unicast_frames, 0x82a) \
-	INTEL_ETILE_STAT(tx_multicast_ctrl_frames, 0x82c) \
-	INTEL_ETILE_STAT(tx_broadcast_ctrl_frames, 0x82e) \
-	INTEL_ETILE_STAT(tx_unicast_ctrl_frames, 0x830) \
-	INTEL_ETILE_STAT(tx_pause_frames, 0x832) \
-	INTEL_ETILE_STAT(tx_runt_packets, 0x834) \
-	INTEL_ETILE_STAT(tx_frame_starts, 0x836) \
-	INTEL_ETILE_STAT(tx_length_errored_frames, 0x838) \
-	INTEL_ETILE_STAT(tx_prc_errored_frames, 0x83a) \
-	INTEL_ETILE_STAT(tx_prc_frames, 0x83c) \
-	INTEL_ETILE_STAT(tx_payload_bytes, 0x860) \
-	INTEL_ETILE_STAT(tx_bytes, 0x862) \
-	INTEL_ETILE_STAT(tx_errors, 0x864) \
-	INTEL_ETILE_STAT(tx_dropped, 0x866) \
-	INTEL_ETILE_STAT(tx_bad_length_type_frames, 0x868)
-
-#define INTEL_ETILE_RX_STATS \
-	INTEL_ETILE_STAT(rx_fragments, 0x900) \
-	INTEL_ETILE_STAT(rx_jabbers, 0x902) \
-	INTEL_ETILE_STAT(rx_fcs_errors, 0x904) \
-	INTEL_ETILE_STAT(rx_crc_errors, 0x906) \
-	INTEL_ETILE_STAT(rx_errored_multicast, 0x908) \
-	INTEL_ETILE_STAT(rx_errored_broadcast, 0x90a) \
-	INTEL_ETILE_STAT(rx_errored_unicast, 0x90c) \
-	INTEL_ETILE_STAT(rx_err_mcast_ctrl_frames, 0x90e) \
-	INTEL_ETILE_STAT(rx_err_bcast_ctrl_frames, 0x910) \
-	INTEL_ETILE_STAT(rx_err_ucast_ctrl_frames, 0x912) \
-	INTEL_ETILE_STAT(rx_pause_errors, 0x914) \
-	INTEL_ETILE_STAT(rx_64byte_frames, 0x916) \
-	INTEL_ETILE_STAT(rx_65to127bytes_frames, 0x918) \
-	INTEL_ETILE_STAT(rx_128to255bytes_frames, 0x91a) \
-	INTEL_ETILE_STAT(rx_256to511bytes_frames, 0x91c) \
-	INTEL_ETILE_STAT(rx_512to1023bytes_frames, 0x91e) \
-	INTEL_ETILE_STAT(rx_1024to1518bytes_frames, 0x920) \
-	INTEL_ETILE_STAT(rx_1519tomax_frames, 0x922) \
-	INTEL_ETILE_STAT(rx_oversize_frames, 0x924) \
-	INTEL_ETILE_STAT(rx_multicast_frames, 0x926) \
-	INTEL_ETILE_STAT(rx_broadcast_frames, 0x928) \
-	INTEL_ETILE_STAT(rx_unicast_frames, 0x92a) \
-	INTEL_ETILE_STAT(rx_multicast_ctrl_frames, 0x92c) \
-	INTEL_ETILE_STAT(rx_broadcast_ctrl_frames, 0x92e) \
-	INTEL_ETILE_STAT(rx_unicast_ctrl_frames, 0x930) \
-	INTEL_ETILE_STAT(rx_pause_frames, 0x932) \
-	INTEL_ETILE_STAT(rx_runt_packets, 0x934) \
-	INTEL_ETILE_STAT(rx_frame_starts, 0x936) \
-	INTEL_ETILE_STAT(rx_length_errored_frames, 0x938) \
-	INTEL_ETILE_STAT(rx_prc_errored_frames, 0x93a) \
-	INTEL_ETILE_STAT(rx_prc_frames, 0x93c) \
-	INTEL_ETILE_STAT(rx_payload_bytes, 0x960) \
-	INTEL_ETILE_STAT(rx_bytes, 0x962)
-
 #define ADI_BRIDGE_MAC_OIF_STATS \
 	ADI_BRIDGE_MAC_OIF_STAT(rx_mac_pkt_cnt, 0x28) \
 	ADI_BRIDGE_MAC_OIF_STAT(tx_mac_pkt_cnt, 0x2c) \
@@ -474,18 +414,6 @@ struct adi_msp_nl_stats {
 #define ADI_MSP_NL_STAT(S) u64 S;
 	ADI_MSP_NL_STATS
 #undef ADI_MSP_NL_STAT
-};
-
-struct intel_etile_tx_stats {
-#define INTEL_ETILE_STAT(S, OFFSET) u64 S;
-	INTEL_ETILE_TX_STATS
-#undef INTEL_ETILE_STAT
-};
-
-struct intel_etile_rx_stats {
-#define INTEL_ETILE_STAT(S, OFFSET) u64 S;
-	INTEL_ETILE_RX_STATS
-#undef INTEL_ETILE_STAT
 };
 
 struct adi_bridge_mac_oif_stats {
@@ -522,8 +450,6 @@ struct adi_msp_rx_stats {
 
 struct adi_msp_stats {
 	struct adi_msp_nl_stats		nl;
-	struct intel_etile_tx_stats	etile_tx;
-	struct intel_etile_rx_stats	etile_rx;
 	struct adi_bridge_mac_oif_stats	bridge_mac_oif;
 	struct adi_oif_tx_stats		oif_tx;
 	struct adi_oif_rx_stats		oif_rx;
@@ -532,6 +458,12 @@ struct adi_msp_stats {
 #endif
 	struct adi_msp_rx_stats		msp_rx;
 };
+
+#define OIF_TX_IPG_MASK		(7 << 8)
+#define OIF_TX_PRE_EN		BIT(4)
+#define OIF_TX_EN		BIT(0)
+#define OIF_RX_IP_PROM_MODE	BIT(4)
+#define OIF_RX_EN		BIT(0)
 
 struct oif_tx_regs {
 	u32 irq_event;		// 0x0
@@ -610,10 +542,9 @@ struct adi_msp_private {
 	struct dma_regs __iomem *status_dma_regs;
 	struct oif_rx_regs __iomem *oif_rx_regs;
 	struct oif_tx_regs __iomem *oif_tx_regs;
-	void __iomem *axi_palau_gpio_msp_ctrl;
+	struct msp_ctrl_regs __iomem *msp_ctrl_regs;
 	void __iomem *bridge_tx_regs;
 	void __iomem *bridge_rx_regs;
-	void __iomem *etile_regs;
 #ifndef CONFIG_ADI_MSPRX_ASYNC_FIFO
 	void __iomem *async_fifo_rx_regs;
 #endif
@@ -682,6 +613,8 @@ struct adi_msp_private {
 	bool hwtstamp_tx_en;
 	bool hwtstamp_rx_en;
 	struct ptp_clock *ptp_clk;
+
+	struct net_device *etile;
 };
 
 static int tx_dma_error_interrupt_count;
@@ -798,30 +731,30 @@ static u64 get_timestamp_ns(union status_wu *wu)
 
 static void adi_msp_enable_rx_dma_interrupts(struct adi_msp_private *lp, u8 ints)
 {
-	u8 value = readb(lp->axi_palau_gpio_msp_ctrl + MSP_INT_CTRL_RX);
+	u8 value = readb(&lp->msp_ctrl_regs->int_ctrl_rx);
 
-	writeb(value | ints, lp->axi_palau_gpio_msp_ctrl + MSP_INT_CTRL_RX);
+	writeb(value | ints, &lp->msp_ctrl_regs->int_ctrl_rx);
 }
 
 static void adi_msp_disable_rx_dma_interrupts(struct adi_msp_private *lp, u8 ints)
 {
-	u8 value = readb(lp->axi_palau_gpio_msp_ctrl + MSP_INT_CTRL_RX);
+	u8 value = readb(&lp->msp_ctrl_regs->int_ctrl_rx);
 
-	writeb(value & ~ints, lp->axi_palau_gpio_msp_ctrl + MSP_INT_CTRL_RX);
+	writeb(value & ~ints, &lp->msp_ctrl_regs->int_ctrl_rx);
 }
 
 static void adi_msp_enable_status_dma_interrupts(struct adi_msp_private *lp, u8 ints)
 {
-	u8 value = readb(lp->axi_palau_gpio_msp_ctrl + MSP_INT_CTRL_STATUS);
+	u8 value = readb(&lp->msp_ctrl_regs->int_ctrl_status);
 
-	writeb(value | ints, lp->axi_palau_gpio_msp_ctrl + MSP_INT_CTRL_STATUS);
+	writeb(value | ints, &lp->msp_ctrl_regs->int_ctrl_status);
 }
 
 static void adi_msp_disable_status_dma_interrupts(struct adi_msp_private *lp, u8 ints)
 {
-	u8 value = readb(lp->axi_palau_gpio_msp_ctrl + MSP_INT_CTRL_STATUS);
+	u8 value = readb(&lp->msp_ctrl_regs->int_ctrl_status);
 
-	writeb(value & ~ints, lp->axi_palau_gpio_msp_ctrl + MSP_INT_CTRL_STATUS);
+	writeb(value & ~ints, &lp->msp_ctrl_regs->int_ctrl_status);
 }
 
 static dma_addr_t adi_msp_rx_dma(struct adi_msp_private *lp, int idx)
@@ -1138,6 +1071,7 @@ static irqreturn_t adi_msp_rx_dma_error_interrupt(int irq, void *dev_id)
 #define LAST_LINE_NUM	5
 static void adi_msp_dump_prev_rx_skb(struct net_device *dev)
 {
+#if IS_ENABLED(CONFIG_ADI_MSP_DEBUG)
 	struct adi_msp_private *lp = netdev_priv(dev);
 	int i, j, k;
 
@@ -1184,6 +1118,9 @@ static void adi_msp_dump_prev_rx_skb(struct net_device *dev)
 			MSP_DBG("%s: %8x:%s\n", dev->name, j * BYTES_PER_LINE, buf);
 		}
 	}
+#else
+	return;
+#endif /* CONFIG_ADI_MSP_DEBUG */
 }
 
 static void adi_msp_drop_prev_rx_skb(struct net_device *dev, int budget)
@@ -1287,8 +1224,8 @@ msp_rx_loop:
 				/* this is start of frame work unit*/
 
 				if (unlikely(lp->prev_rx_skb_count > 0)) {
-					MSP_ERR("%s: unexpected SOF work unit, will drop previous %d work unit(s)\n",
-						dev->name, lp->prev_rx_skb_count);
+					MSP_WARN("%s: unexpected SOF work unit, will drop previous %d work unit(s)\n",
+						 dev->name, lp->prev_rx_skb_count);
 
 					adi_msp_dump_prev_rx_skb(dev);
 					adi_msp_drop_prev_rx_skb(dev, budget);
@@ -1300,8 +1237,8 @@ msp_rx_loop:
 				lp->prev_rx_skb_count = 1;
 			} else {
 				if (unlikely(lp->prev_rx_skb_count == 0)) {
-					MSP_ERR("%s: non-SOF work unit does not follow an SOF work unit, will be dropped\n",
-						dev->name);
+					MSP_WARN("%s: non-SOF work unit does not follow an SOF work unit, will be dropped\n",
+						 dev->name);
 
 					lp->prev_rx_skb[0] = skb;
 					lp->prev_rx_skb_count = 1;
@@ -1311,8 +1248,8 @@ msp_rx_loop:
 
 					lp->stats.nl.rx_errors++;
 				} else if (unlikely(lp->prev_rx_skb_count == PREV_RX_SKB_NUM - 1)) {
-					MSP_ERR("%s: Ethernet frame uses too many work units, will be dropped\n",
-						dev->name);
+					MSP_WARN("%s: Ethernet frame uses too many work units, will be dropped\n",
+						 dev->name);
 					lp->prev_rx_skb[lp->prev_rx_skb_count] = skb;
 					lp->prev_rx_skb_count++;
 
@@ -1331,8 +1268,8 @@ msp_rx_loop:
 				dev->name, (skb->data[0] & RX_STAT_WU_HEADER_PORT) ? 1 : 0);
 
 			if (unlikely((skb->data[0] & RX_STAT_WU_HEADER_DROPPED_ERR) != 0)) {
-				MSP_ERR("%s: status work unit indicates frame dropped error\n",
-					dev->name);
+				MSP_WARN("%s: status work unit indicates frame dropped error\n",
+					 dev->name);
 
 				lp->prev_rx_skb[lp->prev_rx_skb_count] = skb;
 				lp->prev_rx_skb_count++;
@@ -1348,8 +1285,8 @@ msp_rx_loop:
 
 				count++;
 			} else if (unlikely((skb->data[0] & RX_STAT_WU_HEADER_ERR) != 0)) {
-				MSP_ERR("%s: status work unit indicates error, will be dropped\n",
-					dev->name);
+				MSP_WARN("%s: status work unit indicates error, will be dropped\n",
+					 dev->name);
 
 				lp->prev_rx_skb[lp->prev_rx_skb_count] = skb;
 				lp->prev_rx_skb_count++;
@@ -1365,8 +1302,8 @@ msp_rx_loop:
 
 				count++;
 			} else if (unlikely(lp->prev_rx_skb_count == 0)) {
-				MSP_ERR("%s: status work unit does not follow data work unit(s), will be dropped\n",
-					dev->name);
+				MSP_WARN("%s: status work unit does not follow data work unit(s), will be dropped\n",
+					 dev->name);
 
 				lp->prev_rx_skb[0] = skb;
 				lp->prev_rx_skb_count = 1;
@@ -1376,8 +1313,8 @@ msp_rx_loop:
 
 				lp->stats.nl.rx_errors++;
 			} else if (unlikely(lp->prev_rx_skb_count > DATA_WU_PER_FRAME)) {
-				MSP_ERR("%s: Ethernet frame larger than MTU, will be dropped\n",
-					dev->name);
+				MSP_WARN("%s: Ethernet frame larger than MTU, will be dropped\n",
+					 dev->name);
 
 				lp->prev_rx_skb[lp->prev_rx_skb_count] = skb;
 				lp->prev_rx_skb_count++;
@@ -1528,10 +1465,13 @@ static int adi_msp_rx_poll(struct napi_struct *napi, int budget)
 	int work_done;
 
 	work_done = adi_msp_rx(dev, budget);
-	if (work_done < budget) {
-		napi_complete_done(napi, work_done);
+
+	if (work_done >= budget)
+		return work_done;;
+
+	if (likely(napi_complete_done(napi, work_done)))
 		adi_msp_enable_rx_dma_interrupts(lp, MSP_INT_CTRL_DMADONE);
-	}
+
 	return work_done;
 }
 
@@ -1881,10 +1821,12 @@ static int adi_msp_status_poll(struct napi_struct *napi, int budget)
 	int work_done;
 
 	work_done = adi_msp_status(dev, budget);
-	if (work_done < budget) {
-		napi_complete_done(napi, work_done);
+	if (work_done >= budget)
+		return work_done;
+
+	if (likely(napi_complete_done(napi, work_done)))
 		adi_msp_enable_status_dma_interrupts(lp, MSP_INT_CTRL_DMADONE);
-	}
+
 	return work_done;
 }
 
@@ -1903,11 +1845,6 @@ static const char adi_msp_gstrings[][ETH_GSTRING_LEN] = {
 #define ADI_MSP_NL_STAT(S) "netlink."#S,
 	ADI_MSP_NL_STATS
 #undef ADI_MSP_NL_STAT
-
-#define INTEL_ETILE_STAT(S, OFFSET) "etile."#S,
-	INTEL_ETILE_TX_STATS
-	INTEL_ETILE_RX_STATS
-#undef INTEL_ETILE_STAT
 
 #define ADI_BRIDGE_MAC_OIF_STAT(S, OFFSET) "bridge."#S,
 	ADI_BRIDGE_MAC_OIF_STATS
@@ -1930,18 +1867,6 @@ static const char adi_msp_gstrings[][ETH_GSTRING_LEN] = {
 };
 
 #define ADI_MSP_STATS_LEN ARRAY_SIZE(adi_msp_gstrings)
-
-static const int intel_etile_tx_stats_offsets[] = {
-#define INTEL_ETILE_STAT(S, OFFSET) OFFSET,
-	INTEL_ETILE_TX_STATS
-#undef INTEL_ETILE_STAT
-};
-
-static const int intel_etile_rx_stats_offsets[] = {
-#define INTEL_ETILE_STAT(S, OFFSET) OFFSET,
-	INTEL_ETILE_RX_STATS
-#undef INTEL_ETILE_STAT
-};
 
 static const int adi_bridge_mac_oif_stats_offsets[] = {
 #define ADI_BRIDGE_MAC_OIF_STAT(S, OFFSET) OFFSET,
@@ -1998,34 +1923,9 @@ static void adi_msp_get_strings(struct net_device *netdev, u32 stringset, u8 *da
 	}
 }
 
-static void fill_intel_etile_tx_stats(struct adi_msp_private *lp)
-{
-	u64 *data = (u64 *)&lp->stats.etile_tx;
-	int num = ARRAY_SIZE(intel_etile_tx_stats_offsets);
-	const int *offsets = intel_etile_tx_stats_offsets;
-	int i;
-
-	for (i = 0; i < num; i++) {
-		data[i] = readl(lp->etile_regs + (offsets[i] + 1) * 4);
-		data[i] = (data[i] << 32) + readl(lp->etile_regs + offsets[i] * 4);
-	}
-}
-
-static void fill_intel_etile_rx_stats(struct adi_msp_private *lp)
-{
-	u64 *data = (u64 *)&lp->stats.etile_rx;
-	int num = ARRAY_SIZE(intel_etile_rx_stats_offsets);
-	const int *offsets = intel_etile_rx_stats_offsets;
-	int i;
-
-	for (i = 0; i < num; i++) {
-		data[i] = readl(lp->etile_regs + (offsets[i] + 1) * 4);
-		data[i] = (data[i] << 32) + readl(lp->etile_regs + offsets[i] * 4);
-	}
-}
-
 static void fill_bridge_mac_oif_stats(struct adi_msp_private *lp)
 {
+#if 0 /* FIXME */
 	u64 *data = (u64 *)&lp->stats.bridge_mac_oif;
 	int num = ARRAY_SIZE(adi_bridge_mac_oif_stats_offsets);
 	const int *offsets = adi_bridge_mac_oif_stats_offsets;
@@ -2036,6 +1936,7 @@ static void fill_bridge_mac_oif_stats(struct adi_msp_private *lp)
 	for (i = 0; i < num; i++)
 		data[i] = readl(lp->etile_regs + ((0x4000 + offsets[i]) & 0x3ff));
 	writel(0, lp->etile_regs + 0x4004);
+#endif
 }
 
 static void fill_oif_tx_stats(struct adi_msp_private *lp)
@@ -2092,8 +1993,6 @@ static void adi_msp_get_ethtool_stats(struct net_device *dev,
 {
 	struct adi_msp_private *lp = netdev_priv(dev);
 
-	fill_intel_etile_tx_stats(lp);
-	fill_intel_etile_rx_stats(lp);
 	fill_bridge_mac_oif_stats(lp);
 	fill_oif_tx_stats(lp);
 	fill_oif_rx_stats(lp);
@@ -2301,9 +2200,18 @@ static int adi_msp_open(struct net_device *dev)
 {
 	struct adi_msp_private *lp = netdev_priv(dev);
 	u32 frame_size, dma_cfg;
+	u32 cfg_tx, rx_ctrl;
 	int i, ret;
 
 	MSP_DBG("%s: Entering %s ...\n", dev->name, __func__);
+
+	/* Disable OIF TX */
+	cfg_tx = readl(&lp->oif_tx_regs->cfg_tx);
+	writel(cfg_tx & ~ OIF_TX_EN, &lp->oif_tx_regs->cfg_tx);
+
+	/* Disable OIF RX */
+	rx_ctrl = readl(&lp->oif_rx_regs->rx_ctrl);
+	writel(rx_ctrl & ~ OIF_RX_EN, &lp->oif_rx_regs->rx_ctrl);
 
 	/* Make sure MSP Tx and Rx interfaces are disabled */
 	writel(0, &lp->tx_regs->stat_ctrl);
@@ -2387,6 +2295,9 @@ static int adi_msp_open(struct net_device *dev)
 		goto err_free_irq_5;
 	}
 
+	/* Enable OIF TX */
+	writel(cfg_tx | OIF_TX_EN, &lp->oif_tx_regs->cfg_tx);
+
 	/* Start Tx status DMA */
 	dma_cfg = STATUS_DMA_CFG_COMMON | DMA_CFG_FLOW_DSCL;
 	writel(adi_msp_status_dma(lp, 0), &lp->status_dma_regs->dscptr_nxt);
@@ -2406,8 +2317,16 @@ static int adi_msp_open(struct net_device *dev)
 	/* Start MSP Rx interface */
 	writel(MSP_EN, &lp->rx_regs->stat_ctrl);
 
+	/* Enable OIF RX */
+	writel(rx_ctrl | OIF_RX_EN, &lp->oif_rx_regs->rx_ctrl);
+
 	napi_enable(&lp->rx_napi);
 	napi_enable(&lp->status_napi);
+
+	adi_msp_enable_rx_dma_interrupts(lp, MSP_INT_CTRL_DMADONE);
+	adi_msp_enable_rx_dma_interrupts(lp, MSP_INT_CTRL_DDE_ERR);
+	adi_msp_enable_status_dma_interrupts(lp, MSP_INT_CTRL_DMADONE);
+	adi_msp_enable_status_dma_interrupts(lp, MSP_INT_CTRL_DDE_ERR);
 
 	netif_start_queue(dev);
 
@@ -2428,30 +2347,26 @@ err_release:
 	goto out;
 }
 
-#if 0
-static void adi_msp_reset(struct net_device *dev)
-{
-	u32 rst_ctrl;
-
-	/* FIXME  For now we only handle Tx0 and Rx0 */
-	rst_ctrl = readl(MSP_RST_CTRL);
-	rst_ctrl &= ~(MSP_RST_CTRL_TX0 | MSP_RST_CTRL_RX0);
-	writel(rst_ctrl, MSP_RST_CTRL);
-	rst_ctrl |= MSP_RST_CTRL_TX0 | MSP_RST_CTRL_RX0;
-	writel(rst_ctrl, MSP_RST_CTRL);
-	/* FIXME  Is there a bit telling us that reset is done? */
-}
-#endif
-
 static int adi_msp_close(struct net_device *dev)
 {
 	struct adi_msp_private *lp = netdev_priv(dev);
+	u32 cfg_tx, rx_ctrl;
 	int i;
 
 	MSP_DBG("%s: Entering %s ...\n", dev->name, __func__);
 
-	/* Make sure MSP Tx and Rx interfaces are disabled */
+	/* Disable MSP Tx interface */
 	writel(0, &lp->tx_regs->stat_ctrl);
+
+	/* Disable OIF TX */
+	cfg_tx = readl(&lp->oif_tx_regs->cfg_tx);
+	writel(cfg_tx & ~ OIF_TX_EN, &lp->oif_tx_regs->cfg_tx);
+
+	/* Disable OIF RX */
+	rx_ctrl = readl(&lp->oif_rx_regs->rx_ctrl);
+	writel(rx_ctrl & ~ OIF_RX_EN, &lp->oif_rx_regs->rx_ctrl);
+
+	/* Disable MSP Rx interface */
 	writel(0, &lp->rx_regs->stat_ctrl);
 
 	/* Disable interrupts */
@@ -2465,6 +2380,11 @@ static int adi_msp_close(struct net_device *dev)
 	writel(0, &lp->tx_dma_regs->cfg);
 	writel(0, &lp->status_dma_regs->cfg);
 	writel(0, &lp->rx_dma_regs->cfg);
+
+	adi_msp_disable_rx_dma_interrupts(lp, MSP_INT_CTRL_DMADONE);
+	adi_msp_disable_rx_dma_interrupts(lp, MSP_INT_CTRL_DDE_ERR);
+	adi_msp_disable_status_dma_interrupts(lp, MSP_INT_CTRL_DMADONE);
+	adi_msp_disable_status_dma_interrupts(lp, MSP_INT_CTRL_DDE_ERR);
 
 	napi_disable(&lp->rx_napi);
 	napi_disable(&lp->status_napi);
@@ -2583,7 +2503,44 @@ static const struct net_device_ops adi_msp_netdev_ops = {
 	.ndo_tx_timeout		= adi_msp_tx_timeout,
 	.ndo_validate_addr	= eth_validate_addr,
 	.ndo_get_stats64	= adi_msp_get_stats64,
-	.ndo_do_ioctl		= adi_msp_ioctl,
+	.ndo_eth_ioctl		= adi_msp_ioctl,
+};
+
+static void adi_msp_ethernet_link_up(struct net_device *dev)
+{
+	struct adi_msp_private *lp = netdev_priv(dev);
+	u32 value;
+
+	MSP_DBG("%s: MSP link up\n", dev->name);
+
+	value = readl(&lp->msp_ctrl_regs->rst_ctrl);
+	writel(value | MSP_RST_CTRL_TSBUF_TX , &lp->msp_ctrl_regs->rst_ctrl);
+
+	value = readl(&lp->msp_ctrl_regs->rst_ctrl);
+	writel(value | MSP_RST_CTRL_TS_STORED, &lp->msp_ctrl_regs->rst_ctrl);
+
+	netif_carrier_on(dev);
+}
+
+static void adi_msp_ethernet_link_down(struct net_device *dev)
+{
+	struct adi_msp_private *lp = netdev_priv(dev);
+	u32 value;
+
+	MSP_DBG("%s: MSP link down\n", dev->name);
+
+	netif_carrier_off(dev);
+
+	value = readl(&lp->msp_ctrl_regs->rst_ctrl);
+	writel(value & ~MSP_RST_CTRL_TS_STORED, &lp->msp_ctrl_regs->rst_ctrl);
+
+	value = readl(&lp->msp_ctrl_regs->rst_ctrl);
+	writel(value & ~MSP_RST_CTRL_TSBUF_TX, &lp->msp_ctrl_regs->rst_ctrl);
+}
+
+static struct intel_fpga_etile_lite_ethernet adi_msp_ethernet = {
+	.link_up		= adi_msp_ethernet_link_up,
+	.link_down		= adi_msp_ethernet_link_down,
 };
 
 #define TX_TIMEOUT	(6000 * HZ / 1000)
@@ -2592,16 +2549,32 @@ static int adi_msp_probe(struct platform_device *pdev)
 {
 	struct adi_msp_private *lp;
 	struct net_device *dev;
-	const char *etile_name, *oif_tx_name, *oif_rx_name;
+	struct net_device *etile;
 	bool has_ptp;
 	struct device_node *ptp_clk_node;
+	struct device_node *etile_node;
 	struct platform_device *ptp_clk_dev;
 	struct adi_phc *phc;
 	void __iomem *p;
-	u32 eth;
 	int ret;
 
 	MSP_DBG("Entering %s ...\n", __func__);
+
+	etile_node = of_parse_phandle(pdev->dev.of_node, "adi,etile", 0);
+	if (!etile_node) {
+		MSP_ERR("Failed to parse adi,etile device node\n");
+		return -EINVAL;
+	}
+	etile = of_find_net_device_by_node(etile_node);
+	if (!etile) {
+		MSP_ERR("Failed to find the E-Tile device\n");
+		return -EPROBE_DEFER;
+	}
+
+	if (!netif_device_present(etile)) {
+		return -EPROBE_DEFER;
+	}
+	MSP_INFO("E-Tile device present\n");
 
 	/* First we check if PTP PHC has been initialized and registered */
 	ptp_clk_node = of_parse_phandle(pdev->dev.of_node, "adi,ptp-clk", 0);
@@ -2611,21 +2584,13 @@ static int adi_msp_probe(struct platform_device *pdev)
 		if (!ptp_clk_dev) {
 			MSP_DBG("ADI PTP PHC device not found\n");
 			has_ptp = false;
-#ifdef MODULE
-			goto ptp_check_done;
-#else
 			return -EPROBE_DEFER;
-#endif
 		}
 		phc = platform_get_drvdata(ptp_clk_dev);
 		if (!phc) {
 			MSP_DBG("ADI PTP PHC device not initialized correctly\n");
 			has_ptp = false;
-#ifdef MODULE
-			goto ptp_check_done;
-#else
 			return -EPROBE_DEFER;
-#endif
 		}
 		if (!phc->ptp_clk) {
 			MSP_ERR("ADI PTP PHC device not registered correctly\n");
@@ -2638,13 +2603,14 @@ static int adi_msp_probe(struct platform_device *pdev)
 		has_ptp = false;
 	}
 
-ptp_check_done:
 	dev = devm_alloc_etherdev(&pdev->dev, sizeof(struct adi_msp_private));
 	if (!dev)
 		return -ENOMEM;
 
 	SET_NETDEV_DEV(dev, &pdev->dev);
 	lp = netdev_priv(dev);
+
+	lp->etile = etile;
 
 	lp->has_ptp = has_ptp;
 	lp->hwtstamp_tx_en = has_ptp;
@@ -2681,33 +2647,14 @@ ptp_check_done:
 	lp->status_dde_error_irq = ret;
 	MSP_DBG("%s: status_dde_error_irq = %d\n", dev->name, ret);
 
-	ret = of_property_read_u32(pdev->dev.of_node, "eth", &eth);
-	if (ret < 0)
-		return ret;
-	if (eth != 0 && eth != 1) {
-		MSP_ERR("%s: bad eth value %u\n", dev->name, eth);
-		return -EINVAL;
-	}
-
-	etile_name = (eth == 0) ? "etile0" : "etile1";
-	p = devm_platform_ioremap_resource_byname(pdev, etile_name);
-	if (IS_ERR(p)) {
-		MSP_ERR("%s: cannot remap %s registers\n",
-			dev->name, etile_name);
-		return PTR_ERR(p);
-	}
-	lp->etile_regs = p;
-
-	oif_tx_name = (eth == 0) ? "oif0_tx" : "oif1_tx";
-	p = devm_platform_ioremap_resource_byname(pdev, oif_tx_name);
+	p = devm_platform_ioremap_resource_byname(pdev, "oif_tx");
 	if (IS_ERR(p)) {
 		MSP_ERR("%s: cannot remap OIF Tx registers\n", dev->name);
 		return PTR_ERR(p);
 	}
 	lp->oif_tx_regs = p;
 
-	oif_rx_name = (eth == 0) ? "oif0_rx" : "oif1_rx";
-	p = devm_platform_ioremap_resource_byname(pdev, oif_rx_name);
+	p = devm_platform_ioremap_resource_byname(pdev, "oif_rx");
 	if (IS_ERR(p)) {
 		MSP_ERR("%s: cannot remap OIF Rx registers\n", dev->name);
 		return PTR_ERR(p);
@@ -2728,33 +2675,12 @@ ptp_check_done:
 		MSP_ERR("%s: cannot remap axi_palau_gpio MSP control registers\n", dev->name);
 		return PTR_ERR(p);
 	}
-	lp->axi_palau_gpio_msp_ctrl = p;
+	lp->msp_ctrl_regs = p;
 
-	/* MAC address should have been set. But it is not. So we set it. */
-
-	/*
-	u32 smac_lo, smac_hi, prom_mode;
-	smac_lo = readl(&(lp->oif_rx_regs->cfg_fr_mux_smac_0));
-	smac_hi = readl(&(lp->oif_rx_regs->cfg_fr_mux_smac_1));
-	prom_mode = (smac_hi >> 16) & 0x1;
-	smac_hi &= 0xffff;
-	pr_info("mac_addr = %04x %08x prom_mode = %d\n", smac_hi, smac_lo, prom_mode);
-	*/
-	/*
-	{
-	u32 prom_mode = 1;
-	unsigned char mac_addr[6] = {0x10, 0x22, 0x33, 0x44, 0x55, 0x66};
-	u32 smac_0 = mac_addr[0] | (mac_addr[1] << 8) | (mac_addr[2] << 16) | (mac_addr[3] << 24);
-	u32 smac_1 = mac_addr[4] | (mac_addr[5] << 8) | prom_mode << 16;
-	writel(smac_0, &(lp->oif_rx_regs->cfg_fr_mux_smac_0));
-	writel(smac_1, &(lp->oif_rx_regs->cfg_fr_mux_smac_1));
-	memcpy(dev->dev_addr, mac_addr, ETH_ALEN);
-	}
-	*/
-	{
-	unsigned char mac_addr[6] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
-	memcpy(dev->dev_addr, mac_addr, ETH_ALEN);
-	}
+	/* get default MAC address from device tree */
+	ret = of_get_mac_address(pdev->dev.of_node, dev->dev_addr);
+	if (ret)
+		eth_hw_addr_random(dev);
 
 	p = devm_platform_ioremap_resource_byname(pdev, "rx");
 	if (IS_ERR(p)) {
@@ -2843,6 +2769,11 @@ ptp_check_done:
 	dev->ethtool_ops = &netdev_ethtool_ops;
 	dev->watchdog_timeo = TX_TIMEOUT;
 
+	adi_msp_disable_rx_dma_interrupts(lp, MSP_INT_CTRL_DMADONE);
+	adi_msp_disable_rx_dma_interrupts(lp, MSP_INT_CTRL_DDE_ERR);
+	adi_msp_disable_status_dma_interrupts(lp, MSP_INT_CTRL_DMADONE);
+	adi_msp_disable_status_dma_interrupts(lp, MSP_INT_CTRL_DDE_ERR);
+
 	netif_napi_add(dev, &lp->rx_napi, adi_msp_rx_poll, NAPI_POLL_WEIGHT);
 	netif_napi_add(dev, &lp->status_napi, adi_msp_status_poll,
 		       NAPI_POLL_WEIGHT);
@@ -2855,6 +2786,9 @@ ptp_check_done:
 		return ret;
 	}
 
+	adi_msp_ethernet.dev = dev;
+	intel_fpga_etile_set_ethernet(etile, &adi_msp_ethernet);
+
 	MSP_INFO("%s: " DRV_NAME "-" DRV_VERSION "\n", dev->name);
 	return ret;
 }
@@ -2862,6 +2796,9 @@ ptp_check_done:
 static int adi_msp_remove(struct platform_device *pdev)
 {
 	struct net_device *dev = platform_get_drvdata(pdev);
+	struct adi_msp_private *lp = netdev_priv(dev);
+
+	intel_fpga_etile_set_ethernet(lp->etile, NULL);
 
 	unregister_netdev(dev);
 

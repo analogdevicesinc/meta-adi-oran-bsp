@@ -10,6 +10,11 @@ require conf/machine/include/arm/armv8-2a/tune-cortexa55.inc
 
 SOC ?= "samana"
 
+ADI_SOC ?= "adrv906x"
+
+# default DDR configuration
+DDR_CONFIG ?= "DDR_2GB_1rank_x16_1gbx16_3200"
+
 ANTI_ROLLBACK_VERSION = "0"
 
 SERIAL_CONSOLES ?= "115200;ttyAMA0"
@@ -26,8 +31,9 @@ KERNEL_IMAGETYPES:append = " fitImage"
 INITRAMFS_IMAGE = "adrv906x-base-initramfs"
 INITRAMFS_IMAGE_BUNDLE = "0"
 
-TFA_HW_CONFIG = "denali"
-TFA_FW_CONFIG = "denali-fw-config"
+TFA_PLATFORM = "${@d.getVar('MACHINE', True).replace('-','_')}"
+TFA_HW_CONFIG = "${TFA_PLATFORM}"
+TFA_FW_CONFIG = "${TFA_PLATFORM}-fw-config"
 
 UBOOT_MACHINE = "adrv906x-eval_defconfig"
 UBOOT_SIGN_ENABLE = "1"
@@ -37,6 +43,8 @@ UBOOT_SIGN_KEYNAME = "dev"
 UBOOT_DTB_BINARY = "${TFA_HW_CONFIG}.dtb"
 
 UBOOT_ENTRYPOINT = "0x46000000"
+TFA_PRI_BL1_LOAD_ADDR = "0x005E0000"
+TFA_SEC_BL1_LOAD_ADDR = "0x045E0000"
 
 KERNEL_FIT_IMAGE ?= "kernel_fit.itb"
 IMAGE_BOOT_FILES ?= "${KERNEL_FIT_IMAGE}"
@@ -48,6 +56,8 @@ DM_VERITY_IMAGE_TYPE = "ext4"
 DM_VERITY_IMAGE_DATA_BLOCK_SIZE = "4096"
 DM_VERITY_IMAGE_HASH_BLOCK_SIZE = "4096"
 DM_VERITY_IMAGE_FEC_ROOTS = "2"
+
+USE_VT ?= "0"
 
 # =============================================================================
 # NFS boot support

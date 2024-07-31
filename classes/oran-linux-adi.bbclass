@@ -1,21 +1,11 @@
-DESCRIPTION = "Linux Kernel for ADI SoCs"
-LICENSE = "GPL-2.0-only"
-
-
-KERNEL_REPO ?= "git://git@github.com/analogdevicesinc/oran-linux.git"
-KERNEL_PROT ?= "https"
-KBRANCH ?= "main"
-
 # Build branch name
 LINUX_VERSION_PREFIX ?= "adi-"
 LINUX_VERSION_SUFFIX ?= ""
 
-SRCREV ?= "${AUTOREV}"
-SRCREV_machine ?= "${AUTOREV}"
 PV = "${LINUX_VERSION}${LINUX_VERSION_SUFFIX}"
 PV:append = "+git${SRCPV}"
 
-SRC_URI = "${KERNEL_REPO};protocol=${KERNEL_PROT};branch=${KBRANCH}"
+FILESEXTRAPATHS:append := "${THISDIR}/${PN}"
 
 require recipes-kernel/linux/linux-yocto.inc
 

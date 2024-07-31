@@ -23,6 +23,9 @@ inherit cmake
 
 EXTRA_OECMAKE = ""
 
+# Define build type
+EXTRA_OECMAKE:append = " -DCMAKE_BUILD_TYPE=${@bb.utils.contains('ADI_CC_BOOT_DEBUG','1','Debug','Release', d)}"
+
 FILES:${PN} = "${bindir}"
 
 # Imports machine specific configs from staging to build

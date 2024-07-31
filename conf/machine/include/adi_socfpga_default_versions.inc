@@ -1,4 +1,4 @@
-PREFERRED_VERSION_linux-socfpga-lts ?= "5.10%"
+PREFERRED_VERSION_linux-socfpga-lts ?= "5.15%"
 
 PREFERRED_VERSION_u-boot-socfpga ?= "v2021.04%"
 

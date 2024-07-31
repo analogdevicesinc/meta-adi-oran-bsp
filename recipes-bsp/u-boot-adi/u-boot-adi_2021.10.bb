@@ -1,4 +1,13 @@
-require u-boot-adi.inc
+HOMEPAGE = "http://www.denx.de/wiki/U-Boot/WebHome"
+DESCRIPTION = "U-Boot, a boot loader for Embedded boards based on PowerPC, \
+ARM, MIPS and several other processors, which can be installed in a boot \
+ROM and used to initialize and test the hardware or to download and run \
+application code."
+SECTION = "bootloaders"
 
-SRC_URI = "git://git@github.com/analogdevicesinc/oran-u-boot.git;protocol=ssh;branch=main"
-SRCREV = "0a9d1244b6a2328cfd35693b45559e428b4d294d"
+inherit oran-u-boot-adi
+require recipes-bsp/u-boot-adi/include/u-boot-adi.inc
+
+LICENSE = "GPL-2.0-or-later"
+LIC_FILES_CHKSUM = "file://Licenses/README;md5=5a7450c57ffe5ae63fd732446b988025"
+SRCREV ?= "be59920aefe43cd7c529e09180c0fadd1e0e1029"

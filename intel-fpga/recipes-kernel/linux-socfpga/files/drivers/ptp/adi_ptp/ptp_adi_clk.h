@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0+
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Clock driver for the ptp hardware clock FTW setup.
  *
- * Copyright (C) 2022 Analog Device, Inc.
+ * Copyright (C) 2022-2024 Analog Device, Inc.
  */
 #ifndef __PTP_ADI_CLK_H
 #define __PTP_ADI_CLK_H
@@ -34,7 +35,6 @@ struct optee_clk_private {
 struct phc_hw_clk {
 	u64 freq;
 	struct clk *tuning_clk;
-	spinlock_t clk_lock;
 	struct phc_clk_ops clk_ops;
 	struct optee_clk_private optee_clk;
 };

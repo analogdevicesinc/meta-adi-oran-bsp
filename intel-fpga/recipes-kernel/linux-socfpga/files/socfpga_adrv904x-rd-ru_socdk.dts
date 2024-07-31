@@ -66,34 +66,6 @@
 		/* We expect the bootloader to fill in the reg */
 		reg = <0 0 0 0>;
 	};
-
-	soc {
-		clocks {
-			osc1 {
-				clock-frequency = <25000000>;
-			};
-
-			sysclk{
-				clock-frequency = <245760000>;
-			};
-
-			ref_a {
-				clock-frequency = <125000000>;
-			};
-
-			ref_aa {
-				clock-frequency = <390625000>;
-			};
-
-			ref_b {
-				clock-frequency = <1>;
-			};
-
-			ref_bb {
-				clock-frequency = <10000000>;
-			};
-		};
-	};
 };
 
 &gpio0 {
@@ -142,6 +114,34 @@
 	bus-width = <4>;
 };
 
+&osc1 {
+	clock-frequency = <25000000>;
+};
+
+&sysclk{
+	clock-frequency = <245760000>;
+};
+
+&s_axi_clk{
+	clock-frequency = <100000000>;
+};
+
+&ref_a {
+	clock-frequency = <125000000>;
+};
+
+&ref_aa {
+	clock-frequency = <390625000>;
+};
+
+&ref_b {
+	clock-frequency = <1>;
+};
+
+&ref_bb {
+	clock-frequency = <10000000>;
+};
+
 &uart0 {
 	status = "okay";
 };
@@ -162,8 +162,8 @@
 &i2c0 {
 	status = "okay";
 	clock-frequency = <100000>;
-	i2c-sda-falling-time-ns = <890>;  /* hcnt */
-	i2c-sdl-falling-time-ns = <890>;  /* lcnt */
+	/* i2c-sda-falling-time-ns = <890>; */  /* hcnt */
+	/* i2c-sdl-falling-time-ns = <890>; */  /* lcnt */
 
 	
 
@@ -211,20 +211,10 @@
 			};
 		};
 
-		i2c@2 {
+		i2c02: i2c@2 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <2>;
-
-			eeprom@50 {/*optical interface #0*/
-				compatible = "at,24c02";
-				reg = <0x50>;
-			};
-			
-			eeprom@51 {/*optical interface #1*/
-				compatible = "at,24c02";
-				reg = <0x51>;
-			};
 		};
 
 		i2c@3 {
@@ -258,6 +248,16 @@
 	clocks = <&ad9545_clock AD9545_CLK_OUT AD9545_Q0B>,
 		 <&ad9545_clock AD9545_CLK_NCO AD9545_NCO0>;
 	clock-names = "sys_clk", "tuning_clk";
+	status = "okay";
+};
+
+&sfp_eth0 {
+	i2c-bus = <&i2c02>;
+	status = "okay";
+};
+
+&sfp_eth1 {
+	i2c-bus = <&i2c02>;
 	status = "okay";
 };
 
@@ -298,6 +298,223 @@
 				label = "Root Filesystem - JFFS2";
 				reg = <0x03FE0000 0x0C020000>;
 			};
+		};
+	};
+};
+
+&temp_volt {
+	voltage {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		input@2 {
+			label = "0.8V VCC";
+			reg = <2>;
+		};
+
+		input@3 {
+			label = "1.8V VCCIO_SDM";
+			reg = <3>;
+		};
+
+		input@4 {
+			label = "1.8V VCCPT";
+			reg = <4>;
+		};
+
+		input@5 {
+			label = "1.2V VCCCRCORE";
+			reg = <5>;
+		};
+
+		input@6 {
+			label = "0.9V VCCH";
+			reg = <6>;
+		};
+
+		input@7 {
+			label = "0.8V VCCL";
+			reg = <7>;
+		};
+	};
+
+	temperature {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		input@0 {
+			label = "Main Die SDM";
+			reg = <0x0>;
+		};
+
+		input@10000 {
+			label = "Main Die corner bottom left max";
+			reg = <0x10000>;
+		};
+
+		input@20000 {
+			label = "Main Die corner top left max";
+			reg = <0x20000>;
+		};
+
+		input@30000 {
+			label = "Main Die corner bottom right max";
+			reg = <0x30000>;
+		};
+
+		input@40000 {
+			label = "Main Die corner top right max";
+			reg = <0x40000>;
+		};
+	};
+};
+
+#include <dt-bindings/iio/frequency/ad9528.h>
+
+&spi {
+	status = "okay";
+	/* GNSS  @5 */
+	/* RFFE1 @4 */
+	/* RFFE0 @3 */
+	/* TRX   @1 */
+	/* AD9576@0 */
+	clk0_ad9528: ad9528@2 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		#clock-cells = <1>;
+		compatible = "ad9528";
+
+		//spi-cpol;
+		//spi-cpha;
+		spi-max-frequency = <50000000>;
+		//adi,spi-3wire-enable;
+		reg = <2>;
+
+		clock-output-names = "TRX_SYS_REF", "TRX_DEV_CLK", "ad9528_out2_unused", "SMA_RFFE0_DEV_CLK", "ad9528_out4_unused", "SMA_RFFE1_DEV_CLK", "ad9528_out6_unused", "ad9528_out7_unused", "ad9528_out8_unused", "ad9528_out9", "FPGA_FABRIC_DEV_CLK", "ad9528_out11_unused", "FPGA_SYS_REF", "FPGA_DEV_CLK";
+
+		adi,vcxo-freq = <245760000>;
+
+		/* PLL1 config */
+		adi,ref-mode = <REF_MODE_SELECT_REFA>;
+		adi,refa-r-div = <1>;
+		adi,refb-r-div = <1>;
+		adi,pll1-feedback-div = <0>;
+		adi,osc-in-diff-enable;
+		adi,pll1-charge-pump-current-nA = <5000>;
+
+		/* PLL2 config */
+
+		/*
+		 * Valid ranges based on VCO locking range:
+		 *   1150.000 MHz - 1341.666 MHz
+		 *    862.500 MHz - 1006.250 MHz
+		 *    690.000 MHz -  805.000 MHz
+		 */
+
+		adi,pll2-charge-pump-current-nA = <805000>;
+
+		/* AD9528_ADDR_PLL2_N_DIV: PLL2 A and B divider */
+		/* adi,pll2-n2-div = <4>; */
+
+		/* AD9528_ADDR_PLL2_CTRL, 0x03U */
+
+		/* AD9528_ADDR_PLL2_VCO_DIV, init->pll2Settings.rfDivider */
+		/* adi,pll2-vco-div-m1 = <4>; */
+
+		/* AD9528_ADDR_PLL2_LF_CTRL1, 0x2AU */
+
+		/* AD9528_ADDR_PLL2_LF_CTRL2, 0x00U */
+
+		/* AD9528_ADDR_PLL2_REPLICA_CHDIV, init->pll2Settings.n2Divider - 1U */
+
+		/* AD9528_ADDR_PLL2_REPLICA_DIV_PHASE, 0x00U */
+
+		/* AD9528_ADDR_PLL2_RDIV, init->pll2Settings.r1Divider */
+		/* adi,pll2-r1-div = <1>; */
+
+		/* AD9528_ADDR_PLL2_VCO_CTRL, 0x11U (r1Divider > 1) 0x01U (r1Divider <= 1) */
+
+		adi,pll2-m1-frequency = <983040000>;
+
+		/* SYSREF config */
+		adi,sysref-src = <SYSREF_SRC_INTERNAL>;
+		adi,sysref-pattern-mode = <SYSREF_PATTERN_CONTINUOUS>;
+		adi,sysref-k-div = <8192>;
+		adi,sysref-nshot-mode = <SYSREF_NSHOT_4_PULSES>;
+		adi,sysref-request-trigger-mode = <SYSREF_LEVEL_HIGH>;
+
+		adi,rpole2 = <RPOLE2_900_OHM>;
+		adi,rzero = <RZERO_2500_OHM>;
+		adi,cpole1 = <CPOLE1_16_PF>;
+
+		/* 0 TRX_SYS_REF		120000
+		   1 TRX_DEV_CLK		491520000
+		   3 SMA_RFFE0_DEV_CLK		491520000
+		   5 SMA_RFFE1_DEV_CLK		491520000
+		  10 FPGA_FABRIC_DEV_CLK	245760000
+		  12 FPGA_SYS_REF		120000
+		  13 FPGA_DEV_CLK		245760000 */
+
+		ad9528_2_c0: channel@0 {
+			reg = <0>;
+			adi,extended-name = "TRX_SYS_REF";
+			adi,driver-mode = <DRIVER_MODE_LVDS>;
+			adi,divider-phase = <2>;
+			adi,channel-divider = <0>;
+			adi,signal-source = <SOURCE_SYSREF_VCO>;
+		};
+
+		ad9528_2_c1: channel@1 {
+			reg = <1>;
+			adi,extended-name = "TRX_DEV_CLK";
+			adi,driver-mode = <DRIVER_MODE_HSTL>;
+			adi,divider-phase = <0>;
+			adi,channel-divider = <2>;
+			adi,signal-source = <SOURCE_VCO>;
+		};
+
+		ad9528_2_c3: channel@3 {
+			reg = <3>;
+			adi,extended-name = "SMA_RFFE0_DEV_CLK";
+			adi,driver-mode = <DRIVER_MODE_HSTL>;
+			adi,divider-phase = <0>;
+			adi,channel-divider = <2>;
+			adi,signal-source = <SOURCE_VCO>;
+		};
+
+		ad9528_2_c5: channel@5 {
+			reg = <5>;
+			adi,extended-name = "SMA_RFFE1_DEV_CLK";
+			adi,driver-mode = <DRIVER_MODE_HSTL>;
+			adi,divider-phase = <0>;
+			adi,channel-divider = <2>;
+			adi,signal-source = <SOURCE_VCO>;
+		};
+
+		ad9528_2_c10: channel@10 {
+			reg = <10>;
+			adi,extended-name = "FPGA_FABRIC_DEV_CLK";
+			adi,driver-mode = <DRIVER_MODE_LVDS>;
+			adi,divider-phase = <0>;
+			adi,channel-divider = <4>;
+			adi,signal-source = <SOURCE_VCO>;
+		};
+
+		ad9528_2_c12: channel@12 {
+			reg = <12>;
+			adi,extended-name = "FPGA_SYS_REF";
+			adi,driver-mode = <DRIVER_MODE_HSTL>;
+			adi,divider-phase = <2>;
+			adi,channel-divider = <0>;
+			adi,signal-source = <SOURCE_SYSREF_VCO>;
+		};
+
+		ad9528_2_c13: channel@13 {
+			reg = <13>;
+			adi,extended-name = "FPGA_DEV_CLK";
+			adi,driver-mode = <DRIVER_MODE_HSTL>;
+			adi,divider-phase = <0>;
+			adi,channel-divider = <4>;
+			adi,signal-source = <SOURCE_VCO>;
 		};
 	};
 };

@@ -1,4 +1,4 @@
-require include/optee-os-tadevkit-adi.inc
-require include/optee-revs-adi_git.inc
+require recipes-security/optee-adi/include/optee-os-tadevkit-adi.inc
+require recipes-security/optee-adi/include/optee-revs-adi_git.inc
 
 SRCREV = "${OPTEE_OS_SRCREV}"
