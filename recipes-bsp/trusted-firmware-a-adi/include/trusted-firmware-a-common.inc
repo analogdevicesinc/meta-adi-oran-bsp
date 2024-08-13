@@ -16,6 +16,7 @@ EXTRA_OEMAKE:remove = " E=0"
 EXTRA_OEMAKE:append = " E=1"
 
 EXTRA_OEMAKE:append = " ${@bb.utils.contains('ADI_CC_BOOT_TEST_FRAMEWORK', '1', 'TEST_FRAMEWORK=1 LOG_LEVEL=0', '', d)}"
+EXTRA_OEMAKE:append = " TFA_DEBUG=${TFA_DEBUG}"
 
 EXTRA_OEMAKE:append = " TRUSTED_BOARD_BOOT=1 GENERATE_COT=1 KEY_ALG=rsa"
 EXTRA_OEMAKE:append = " ROT_KEY=${ROT_KEY}"
