@@ -18,6 +18,5 @@ ADI_BOOT_DEBUG_CONFIGS = "\
     CFG_DEBUG_INFO=y \
     CFG_TEE_CORE_DEBUG=y \
     CFG_TEE_CORE_TA_TRACE=y \
-    CFG_ADI_ADIMEM_PTA=y \
     "
 EXTRA_OEMAKE:append = " ${@bb.utils.contains('ADI_CC_BOOT_DEBUG','1' ,'${ADI_BOOT_DEBUG_CONFIGS}', ' ', d)}"
