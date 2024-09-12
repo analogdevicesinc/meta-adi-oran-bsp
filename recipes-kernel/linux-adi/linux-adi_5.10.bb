@@ -6,5 +6,5 @@ require recipes-kernel/linux-adi/include/linux-adi.inc
 
 LINUX_VERSION = "5.10.179"
 LIC_FILES_CHKSUM = "file://COPYING;md5=6bc538ed5bd9a7fc9398086aedcd7e46"
-SRCREV ?= "e5898df5b0867c2048d020aefb97c76bf9806973"
+SRCREV ?= "6145065873815c707890b4ee456d6acbab519c34"
 SRCREV_machine ?= "${SRCREV}"
