@@ -36,6 +36,8 @@ TFA_PLATFORM = "${@d.getVar('MACHINE', True).replace('-','_')}"
 TFA_HW_CONFIG = "${TFA_PLATFORM}"
 TFA_FW_CONFIG = "${TFA_PLATFORM}-fw-config"
 
+OPTEE_PLATFORM = "${@d.getVar('MACHINE', True).split('-')[0]}"
+
 UBOOT_MACHINE = "adrv906x-eval_defconfig"
 UBOOT_SIGN_ENABLE = "1"
 UBOOT_SIGN_KEYDIR = "${TMPDIR}/work-shared/${MACHINE}/fit-keys"
