@@ -15,6 +15,7 @@ ADI_SOC ?= "adrv906x"
 # default DDR configuration
 DDR_CONFIG ?= "DDR_2GB_1rank_x16_1gbx16_3200"
 
+DISTRO_VERSION = "${@d.getVar('VERSION_META').split('-')[0]}"
 ANTI_ROLLBACK_VERSION = "0"
 
 SERIAL_CONSOLES ?= "115200;ttyAMA0"
@@ -51,7 +52,7 @@ IMAGE_BOOT_FILES ?= "${KERNEL_FIT_IMAGE}"
 WKS_FILE ?= "adrv906x-sd.wks.in"
 
 IMAGE_CLASSES += "dm-verity-img-adi"
-DM_VERITY_IMAGE = "adrv906x-base-jtag-image"
+DM_VERITY_IMAGE = "adrv906x-base-image"
 DM_VERITY_IMAGE_TYPE = "ext4"
 DM_VERITY_IMAGE_DATA_BLOCK_SIZE = "4096"
 DM_VERITY_IMAGE_HASH_BLOCK_SIZE = "4096"
