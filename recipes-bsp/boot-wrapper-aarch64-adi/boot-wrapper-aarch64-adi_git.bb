@@ -5,4 +5,4 @@ require recipes-bsp/boot-wrapper-aarch64-adi/include/boot-wrapper-aarch64-adi.in
 
 LICENSE = "BSD-3-Clause"
 LIC_FILES_CHKSUM = "file://LICENSE.txt;md5=bb63326febfb5fb909226c8e7ebcef5c"
-SRCREV ?= "bb1fe528a80f8aeca71742c2fb2b002890381613"
+SRCREV = "f531bcfaf826a0fd7ef4ac3fec8674578e41f900"
