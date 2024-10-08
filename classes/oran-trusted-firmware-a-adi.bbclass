@@ -10,7 +10,7 @@ RPROVIDES:${PN} = "trusted-firmware-a"
 DEPENDS:append  = " secondary-app-pack"
 do_compile[depends] = " secondary-app-pack:do_install"
 
-TFA_SECONDARY_IMAGE_BIN = "${DEPLOY_DIR}/app-pack/secondary_app_pack.bin"
+TFA_SECONDARY_IMAGE_BIN = "${DEPLOY_DIR_IMAGE}/secondary_app_pack.bin"
 EXTRA_OEMAKE:append = " SECONDARY_IMAGE_BIN=${TFA_SECONDARY_IMAGE_BIN}"
 
 #
