@@ -16,7 +16,9 @@ ADI_SOC ?= "adrv906x"
 DDR_CONFIG ?= "DDR_2GB_1rank_x16_1gbx16_3200"
 
 DISTRO_VERSION = "${@d.getVar('VERSION_META').split('-')[0]}"
+
 ANTI_ROLLBACK_VERSION = "0"
+APP_PACK_ANTI_ROLLBACK_VERSION ??= "${ANTI_ROLLBACK_VERSION}"
 
 SERIAL_CONSOLES ?= "115200;ttyAMA0"
 # Must be empty to support read-only rootfs
