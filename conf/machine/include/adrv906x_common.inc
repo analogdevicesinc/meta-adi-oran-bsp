@@ -62,6 +62,8 @@ DM_VERITY_IMAGE_DATA_BLOCK_SIZE = "4096"
 DM_VERITY_IMAGE_HASH_BLOCK_SIZE = "4096"
 DM_VERITY_IMAGE_FEC_ROOTS = "2"
 
+SECONDARY_LINUX_ENABLED = "0"
+
 USE_VT ?= "0"
 
 # Flag to build custom BL1 and app-pack for secure debug access and RMA
