@@ -1,4 +1,4 @@
-SRC_URI = "gitsm://git@github.com/analogdevicesinc/oran-trusted-firmware-a.git;protocol=https;branch=release/adrv906x-v0.3.0"
+SRC_URI = "gitsm://git@github.com/analogdevicesinc/oran-trusted-firmware-a.git;protocol=https;branch=main"
 SRCREV_FORMAT = "tfa"
 
 # mbedtls is a submodule
