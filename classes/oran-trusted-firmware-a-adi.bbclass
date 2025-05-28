@@ -36,7 +36,7 @@ EXTRA_OEMAKE:append = " BL32=${DEPLOY_DIR_IMAGE}/optee/tee-pager_v2.bin"
 #
 
 DEPENDS:append  = " virtual/kernel"
-do_compile[depends] += " trusted-firmware-a-dtbs:do_populate_sysroot virtual/kernel:do_uboot_assemble_fitimage"
+do_compile[depends] += " trusted-firmware-a-dtbs:do_populate_sysroot virtual/bootloader:do_uboot_assemble_fitimage"
 EXTRA_OEMAKE:append = " HW_CONFIG=${TMPDIR}/work-shared/${MACHINE}/${UBOOT_DTB_BINARY}"
 EXTRA_OEMAKE:append = " FW_CONFIG=${STAGING_DIR_HOST}/firmware/${TFA_FW_CONFIG}.dtb"
 

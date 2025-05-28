@@ -31,17 +31,6 @@ do_assemble_fitimage:prepend() {
     cp -P "${STAGING_DIR_HOST}/firmware/${UBOOT_DTB_BINARY}" "${B}"
 }
 
-do_uboot_assemble_fitimage[depends] += "virtual/kernel:do_assemble_fitimage"
-do_uboot_assemble_fitimage:append() {
-    # mkimage seems to add nearly 2K of padding, putting us over the 8K limit.
-    # we can shed this padding by de-compiling and re-compiling the device tree.
-    dtc -I dtb -O dts "${B}/${UBOOT_DTB_BINARY}" > "${B}/${UBOOT_DTB_BINARY}.dts"
-    dtc -I dts -O dtb "${B}/${UBOOT_DTB_BINARY}.dts" > "${B}/${UBOOT_DTB_BINARY}"
-
-    cp -P "${B}/${UBOOT_DTB_BINARY}" "${B}/u-boot-${MACHINE}.dtb"
-
-    install -Dm 644 "${B}/${UBOOT_DTB_BINARY}" "${TMPDIR}/work-shared/${MACHINE}/${UBOOT_DTB_BINARY}"
-}
 
 do_assemble_fitimage_initramfs[depends] += "virtual/kernel:do_assemble_fitimage"
 addtask assemble_fitimage_initramfs before do_deploy after do_uboot_assemble_fitimage

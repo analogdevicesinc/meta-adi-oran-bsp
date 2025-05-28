@@ -1,4 +1,4 @@
-PREFERRED_VERSION_linux-adi                 ?= "5.10%"
+PREFERRED_VERSION_linux-adi                 ?= "6.12%"
 PREFERRED_VERSION_u-boot                    ?= "2021.10%"
 PREFERRED_VERSION_trusted-firmware-a-adi    ?= "git"
 PREFERRED_VERSION_optee-os-adi              ?= "git"

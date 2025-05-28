@@ -5,7 +5,7 @@ ROM and used to initialize and test the hardware or to download and run \
 application code."
 SECTION = "bootloaders"
 
-inherit oran-u-boot-adi
+inherit oran-u-boot-adi uboot-sign-adi
 require recipes-bsp/u-boot-adi/include/u-boot-adi.inc
 
 LICENSE = "GPL-2.0-or-later"

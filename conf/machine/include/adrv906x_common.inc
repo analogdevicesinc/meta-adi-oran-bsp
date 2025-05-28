@@ -55,7 +55,7 @@ KERNEL_FIT_IMAGE ?= "kernel_fit.itb"
 IMAGE_BOOT_FILES ?= "${KERNEL_FIT_IMAGE}"
 WKS_FILE ?= "adrv906x-sd.wks.in"
 
-IMAGE_CLASSES += "dm-verity-img-adi"
+IMAGE_CLASSES += "dm-verity-img-adi image_types_wic-adi"
 DM_VERITY_IMAGE = "adrv906x-base-image"
 DM_VERITY_IMAGE_TYPE = "ext4"
 DM_VERITY_IMAGE_DATA_BLOCK_SIZE = "4096"
