@@ -12,7 +12,7 @@ ROT_KEY ?= "plat/adi/adrv/board/${TFA_PLATFORM}/rot_key.pem"
 TFA_DEBUG = "${ADI_CC_BOOT_DEBUG}"
 
 EXTRA_OEMAKE:append = " ${@bb.utils.contains('ADI_CC_BOOT_TEST_FRAMEWORK', '1', 'TEST_FRAMEWORK=1 LOG_LEVEL=0', '', d)}"
-EXTRA_OEMAKE:append = " TFA_DEBUG=${TFA_DEBUG} TF_A_DIR=${S}"
+EXTRA_OEMAKE:append = " TFA_DEBUG=${TFA_DEBUG} TF_A_DIR=."
 
 EXTRA_OEMAKE:append = " TRUSTED_BOARD_BOOT=1 GENERATE_COT=1 KEY_ALG=rsa"
 EXTRA_OEMAKE:append = " ROT_KEY=${ROT_KEY}"
