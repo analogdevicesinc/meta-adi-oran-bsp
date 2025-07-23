@@ -54,6 +54,41 @@ do_compile() {
     done
 }
 
+def get_openssl_flags(d):
+    key = d.getVar('TA_SIGNING_PRIV_KEY_PATH', expand=True)
+    flags = ''
+    if key.startswith('pkcs11:'):
+        flags += '-keyform engine -engine pkcs11'
+    return flags
+
+def get_openssl_engines(d):
+    key = d.getVar('TA_SIGNING_PRIV_KEY_PATH', expand=True)
+    val = ''
+    if key.startswith('pkcs11:'):
+        val += d.getVar('RECIPE_SYSROOT_NATIVE') + '/usr/lib/engines-3/'
+    return val
+
+def get_pkcs11_module(d):
+    key = d.getVar('TA_SIGNING_PRIV_KEY_PATH', expand=True)
+    val = ''
+    if key.startswith('pkcs11:'):
+        val += d.getVar('RECIPE_SYSROOT_NATIVE') + '/usr/lib/pkcs11/p11-kit-client.so'
+    return val
+
+def get_extra_depends(d):
+    key = d.getVar('TA_SIGNING_PRIV_KEY_PATH', expand=True)
+    val = ''
+    if key.startswith('pkcs11:'):
+        val += 'libp11-native p11-kit-native'
+    return val
+
+DEPENDS:append = " ${@get_extra_depends(d)}"
+
+export OPENSSL_ENGINES="${@get_openssl_engines(d)}"
+export PKCS11_MODULE_PATH="${@get_pkcs11_module(d)}"
+export P11_KIT_SERVER_ADDRESS
+export P11_KIT_SERVER_PID
+
 do_re_sign_TAs() {
     # TAs
     TAS=$(find ${S} -type d -name "ta")
@@ -71,29 +106,30 @@ do_re_sign_TAs() {
 
         ## Sign TAs (https://optee.readthedocs.io/en/latest/building/trusted_applications.html#signing-of-tas) ##
         # Manually generate a digest of the generated .stripped.elf files
-        ${PYTHON3} ${TA_DEV_KIT_DIR}/scripts/sign_encrypt.py digest \
-            --key  ${TA_SIGNING_PRIV_KEY_PATH} \
-            --uuid ${ta_uuid} \
-            --in   ${ta_uuid}.stripped.elf \
-            --dig  ${ta_uuid}.dig
+        ${PYTHON3} "${TA_DEV_KIT_DIR}/scripts/sign_encrypt.py" digest \
+            --key  "${TA_SIGNING_PUB_KEY_PATH}" \
+            --uuid "${ta_uuid}" \
+            --in   "${ta_uuid}.stripped.elf" \
+            --dig  "${ta_uuid}.dig"
 
         # Sign this digest offline
-        base64 --decode ${ta_uuid}.dig \
+        base64 --decode "${ta_uuid}.dig" \
             | openssl pkeyutl -sign \
-                -inkey ${TA_SIGNING_PRIV_KEY_PATH} \
+                -inkey "${TA_SIGNING_PRIV_KEY_PATH}" \
+                ${@get_openssl_flags(d)} \
                 -pkeyopt digest:sha256 \
                 -pkeyopt rsa_padding_mode:pss \
                 -pkeyopt rsa_pss_saltlen:digest \
                 -pkeyopt rsa_mgf1_md:sha256 \
-            | base64 > ${ta_uuid}.sig
+            | base64 > "${ta_uuid}.sig"
 
         # Manually stitch the TA and signature together
-        ${PYTHON3} ${TA_DEV_KIT_DIR}/scripts/sign_encrypt.py stitch \
-            --key  ${TA_SIGNING_PUB_KEY_PATH} \
-            --uuid ${ta_uuid} \
-            --in   ${ta_uuid}.stripped.elf \
-            --sig  ${ta_uuid}.sig \
-            --out  ${ta_uuid}.ta
+        ${PYTHON3} "${TA_DEV_KIT_DIR}/scripts/sign_encrypt.py" stitch \
+            --key  "${TA_SIGNING_PUB_KEY_PATH}" \
+            --uuid "${ta_uuid}" \
+            --in   "${ta_uuid}.stripped.elf" \
+            --sig  "${ta_uuid}.sig" \
+            --out  "${ta_uuid}.ta"
     done
 }
 addtask re_sign_TAs after do_compile before do_install
