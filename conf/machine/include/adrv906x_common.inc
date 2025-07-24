@@ -42,8 +42,8 @@ OPTEE_PLATFORM = "${@d.getVar('MACHINE', True).split('-')[0]}"
 
 UBOOT_MACHINE = "adrv906x-eval_defconfig"
 UBOOT_SIGN_ENABLE = "1"
-UBOOT_SIGN_KEYDIR = "${TMPDIR}/work-shared/${MACHINE}/fit-keys"
-UBOOT_SIGN_KEYNAME = "dev"
+UBOOT_SIGN_KEYDIR ?= "${TMPDIR}/work-shared/${MACHINE}/fit-keys"
+UBOOT_SIGN_KEYNAME ?= "dev"
 # UBOOT_MKIMAGE_DTCOPTS = "-I dts -O dtb -p 2000"
 UBOOT_DTB_BINARY = "${TFA_HW_CONFIG}.dtb"
 
