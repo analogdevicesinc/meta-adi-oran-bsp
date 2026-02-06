@@ -1,4 +1,4 @@
-KERNEL_REPO = "git://git@github.com/analogdevicesinc/linux.git"
+KERNEL_REPO = "git://git@github.com/analogdevicesinc/oran-linux.git"
 KERNEL_PROT = "ssh"
 
 SRC_URI = "${KERNEL_REPO};protocol=${KERNEL_PROT};branch=${KBRANCH}"
