@@ -10,4 +10,4 @@ require recipes-bsp/u-boot-adi/include/u-boot-adi.inc
 
 LICENSE = "GPL-2.0-or-later"
 LIC_FILES_CHKSUM = "file://Licenses/README;md5=2ca5f2c35c8cc335f0a19756634782f1"
-SRCREV ?= "69140be028c9bff50d0b3d137d5155066c0315dc"
+SRCREV ?= "533b301d34aea4f84c60e79d5fcb85d3a2e918d5"
